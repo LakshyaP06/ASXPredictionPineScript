@@ -2,7 +2,7 @@
 // © LakshyaP06
 
 //@version=5
-indicator("Advanced ASX Stock Prediction", overlay=true, max_bars_back=500)
+indicator("Advanced ASX Stock Prediction with Forecast", overlay=true, max_bars_back=500)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // INPUT SETTINGS
@@ -40,6 +40,13 @@ predictionStrength = input.int(60, "Prediction Signal Strength", minval=0, maxva
 showPredictionLabels = input.bool(true, "Show Prediction Labels", group="Prediction Settings")
 showSupportResistance = input.bool(true, "Show Support/Resistance", group="Prediction Settings")
 
+// Forecast Settings
+forecastLength = input.int(5, "Forecast Lookback Periods", minval=2, maxval=50, group="Next Day Forecast")
+showForecastLine = input.bool(true, "Show Forecast Line", group="Next Day Forecast")
+forecastMethod = input.string("Combined", "Forecast Method", 
+                               options=["Linear Regression", "EMA Projection", "Combined"], 
+                               group="Next Day Forecast")
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // CALCULATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -76,6 +83,55 @@ strongTrend = adx > 25
 // Stochastic
 stochK = ta.stoch(close, high, low, 14)
 stochD = ta.sma(stochK, 3)
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEXT DAY PRICE FORECAST
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Method 1: Linear Regression Forecast
+linearRegSlope = ta.linreg(close, forecastLength, 0) - ta.linreg(close, forecastLength, 1)
+lrForecast = close + linearRegSlope
+
+// Method 2: EMA Momentum Projection
+emaSlope = emaShort - emaShort[1]
+emaMomentum = ta.ema(emaSlope, 5)
+emaForecast = close + emaMomentum
+
+// Method 3: Price Rate of Change
+roc = ta.roc(close, forecastLength)
+rocForecast = close * (1 + (roc / 100))
+
+// Method 4: ATR-based Range Forecast
+trendDirection = emaShort > emaLong ? 1 : -1
+atrForecast = close + (atr * 0.5 * trendDirection)
+
+// Method 5: Bollinger Band Mean Reversion
+bbPosition = (close - bbLower) / (bbUpper - bbLower)
+bbMeanReversion = bbPosition > 0.8 ? close - (atr * 0.3) : 
+                   bbPosition < 0.2 ? close + (atr * 0.3) : close
+
+// Combined Forecast (weighted average)
+combinedForecast = forecastMethod == "Linear Regression" ? lrForecast :
+                   forecastMethod == "EMA Projection" ? emaForecast :
+                   (lrForecast * 0.3 + emaForecast * 0.25 + rocForecast * 0.2 + 
+                    atrForecast * 0.15 + bbMeanReversion * 0.1)
+
+// Calculate expected change
+forecastChange = combinedForecast - close
+forecastChangePercent = (forecastChange / close) * 100
+
+// Confidence Score (based on trend strength, volatility, and alignment)
+methodAlignment = math.abs(lrForecast - emaForecast) / close < 0.02 ? 20 : 0
+volatilityScore = atr / close < 0.03 ? 20 : atr / close < 0.05 ? 10 : 0
+trendScore = strongTrend ? 20 : 10
+volumeScore = volumeIncreasing ? 20 : 10
+consistencyScore = math.abs(close - close[1]) / close < 0.02 ? 20 : 10
+
+confidenceScore = methodAlignment + volatilityScore + trendScore + volumeScore + consistencyScore
+
+// Forecast Range (High/Low estimates)
+forecastHigh = combinedForecast + (atr * 0.5)
+forecastLow = combinedForecast - (atr * 0.5)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TREND ANALYSIS
@@ -164,6 +220,17 @@ plot(showSupportResistance ? resistance : na, "Resistance", color=color.new(colo
 plot(showSupportResistance ? support : na, "Support", color=color.new(color.green, 0), 
      linewidth=1, style=plot.style_circles)
 
+// Forecast Line
+forecastColor = forecastChangePercent > 0 ? color.new(color.lime, 30) : color.new(color.red, 30)
+plot(showForecastLine ? combinedForecast : na, "Next Day Forecast", 
+     color=forecastColor, linewidth=3, style=plot.style_cross)
+
+// Forecast Range
+plot(showForecastLine ? forecastHigh : na, "Forecast High", 
+     color=color.new(color.green, 70), linewidth=1, style=plot.style_circles)
+plot(showForecastLine ? forecastLow : na, "Forecast Low", 
+     color=color.new(color.red, 70), linewidth=1, style=plot.style_circles)
+
 // Buy/Sell Signals
 plotshape(strongBuySignal, "Strong Buy", shape.labelup, location.belowbar, 
           color=color.new(color.green, 0), text="STRONG BUY", textcolor=color.white, size=size.normal)
@@ -210,51 +277,94 @@ alertcondition(emaCrossUp, title="Bullish EMA Cross",
 alertcondition(emaCrossDown, title="Bearish EMA Cross", 
                message="Bearish EMA crossunder detected")
 
+// Forecast Alerts
+bigMoveUp = forecastChangePercent > 2 and confidenceScore > 60
+bigMoveDown = forecastChangePercent < -2 and confidenceScore > 60
+alertcondition(bigMoveUp, title="Forecast: Big Move Up", 
+               message="Next day forecast predicts +{{plot_0}}% move with high confidence")
+alertcondition(bigMoveDown, title="Forecast: Big Move Down", 
+               message="Next day forecast predicts {{plot_0}}% move with high confidence")
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// TABLE - PREDICTION DASHBOARD
+// TABLE - ENHANCED PREDICTION DASHBOARD WITH FORECAST
 // ═══════════════════════════════════════════════════════════════════════════════
 
 if showPredictionLabels
-    var table dashboard = table.new(position.top_right, 2, 8, 
+    var table dashboard = table.new(position.top_right, 2, 13, 
                                      bgcolor=color.new(color.black, 80), 
                                      border_width=2, border_color=color.gray)
     
     // Headers
-    table.cell(dashboard, 0, 0, "Indicator", text_color=color.white, bgcolor=color.new(color.gray, 70))
-    table.cell(dashboard, 1, 0, "Value", text_color=color.white, bgcolor=color.new(color.gray, 70))
+    table.cell(dashboard, 0, 0, "Indicator", text_color=color.white, 
+               bgcolor=color.new(color.gray, 70), text_size=size.normal)
+    table.cell(dashboard, 1, 0, "Value", text_color=color.white, 
+               bgcolor=color.new(color.gray, 70), text_size=size.normal)
+    
+    // Current Price
+    table.cell(dashboard, 0, 1, "Current Price", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 1, str.tostring(math.round(close, 2)), 
+               text_color=color.yellow, text_size=size.small)
+    
+    // === FORECAST SECTION ===
+    table.cell(dashboard, 0, 2, "━━━ FORECAST ━━━", text_color=color.aqua, 
+               bgcolor=color.new(color.blue, 85), text_size=size.small)
+    table.cell(dashboard, 1, 2, "━━━━━━━━━━", text_color=color.aqua, 
+               bgcolor=color.new(color.blue, 85), text_size=size.small)
+    
+    // Next Day Prediction
+    forecastDisplayColor = forecastChangePercent > 0 ? color.lime : color.red
+    table.cell(dashboard, 0, 3, "Next Day Est.", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 3, str.tostring(math.round(combinedForecast, 2)), 
+               text_color=forecastDisplayColor, text_size=size.normal)
+    
+    // Expected Change $
+    changeSymbol = forecastChange > 0 ? "+" : ""
+    table.cell(dashboard, 0, 4, "Change ($)", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 4, changeSymbol + str.tostring(math.round(forecastChange, 3)), 
+               text_color=forecastDisplayColor, text_size=size.small)
+    
+    // Expected Change %
+    table.cell(dashboard, 0, 5, "Change (%)", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 5, changeSymbol + str.tostring(math.round(forecastChangePercent, 2)) + "%", 
+               text_color=forecastDisplayColor, text_size=size.normal)
+    
+    // Forecast Range
+    table.cell(dashboard, 0, 6, "Range", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 6, str.tostring(math.round(forecastLow, 2)) + " - " + 
+               str.tostring(math.round(forecastHigh, 2)), 
+               text_color=color.orange, text_size=size.small)
+    
+    // Confidence Score
+    confColor = confidenceScore >= 70 ? color.lime : confidenceScore >= 50 ? color.yellow : color.orange
+    table.cell(dashboard, 0, 7, "Confidence", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 7, str.tostring(confidenceScore) + "%", 
+               text_color=confColor, text_size=size.small)
+    
+    // === CURRENT INDICATORS ===
+    table.cell(dashboard, 0, 8, "━━ INDICATORS ━━", text_color=color.aqua, 
+               bgcolor=color.new(color.purple, 85), text_size=size.small)
+    table.cell(dashboard, 1, 8, "━━━━━━━━━━", text_color=color.aqua, 
+               bgcolor=color.new(color.purple, 85), text_size=size.small)
     
     // RSI
     rsiColor = rsi > rsiOverbought ? color.red : rsi < rsiOversold ? color.green : color.yellow
-    table.cell(dashboard, 0, 1, "RSI", text_color=color.white)
-    table.cell(dashboard, 1, 1, str.tostring(math.round(rsi, 2)), text_color=rsiColor)
+    table.cell(dashboard, 0, 9, "RSI", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 9, str.tostring(math.round(rsi, 2)), 
+               text_color=rsiColor, text_size=size.small)
     
     // Trend
     trendText = uptrend ? "BULLISH" : downtrend ? "BEARISH" : "NEUTRAL"
     trendColor = uptrend ? color.green : downtrend ? color.red : color.yellow
-    table.cell(dashboard, 0, 2, "Trend", text_color=color.white)
-    table.cell(dashboard, 1, 2, trendText, text_color=trendColor)
+    table.cell(dashboard, 0, 10, "Trend", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 10, trendText, text_color=trendColor, text_size=size.small)
     
-    // ADX
-    adxColor = adx > 25 ? color.green : color.orange
-    table.cell(dashboard, 0, 3, "ADX", text_color=color.white)
-    table.cell(dashboard, 1, 3, str.tostring(math.round(adx, 2)), text_color=adxColor)
-    
-    // Bullish Score
-    table.cell(dashboard, 0, 4, "Bull Score", text_color=color.white)
-    table.cell(dashboard, 1, 4, str.tostring(bullishScore), text_color=color.green)
-    
-    // Bearish Score
-    table.cell(dashboard, 0, 5, "Bear Score", text_color=color.white)
-    table.cell(dashboard, 1, 5, str.tostring(bearishScore), text_color=color.red)
+    // Bull/Bear Scores
+    table.cell(dashboard, 0, 11, "Bull/Bear", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 11, str.tostring(bullishScore) + " / " + str.tostring(bearishScore), 
+               text_color=color.white, text_size=size.small)
     
     // Volume Status
     volStatus = volumeIncreasing ? "HIGH" : "LOW"
     volColor = volumeIncreasing ? color.green : color.gray
-    table.cell(dashboard, 0, 6, "Volume", text_color=color.white)
-    table.cell(dashboard, 1, 6, volStatus, text_color=volColor)
-    
-    // Long Term Trend
-    ltTrend = longTermBullish ? "BULLISH" : "BEARISH"
-    ltColor = longTermBullish ? color.green : color.red
-    table.cell(dashboard, 0, 7, "LT Trend", text_color=color.white)
-    table.cell(dashboard, 1, 7, ltTrend, text_color=ltColor)
+    table.cell(dashboard, 0, 12, "Volume", text_color=color.white, text_size=size.small)
+    table.cell(dashboard, 1, 12, volStatus, text_color=volColor, text_size=size.small)
