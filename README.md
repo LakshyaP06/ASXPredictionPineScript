@@ -67,3 +67,5 @@ Volume = LOW → Low trading activity, which can mean weaker conviction behind p
 3. Adjust parameters based on stock volatility and your trading style
 4. Set up alerts for buy/sell signals
 5. Use stop-loss levels for risk management
+
+## NOTE: For research purposes only, research before you buy stocks.
