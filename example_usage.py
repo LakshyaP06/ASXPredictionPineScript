@@ -3,6 +3,7 @@
 Simple example demonstrating ASX Stock Predictor usage
 """
 
+import sys
 import pandas as pd
 import yfinance as yf
 from asx_stock_predictor import ASXStockPredictor
@@ -24,7 +25,7 @@ def main():
     
     if len(df) < 50:
         print("Error: Insufficient data. Need at least 50 periods.")
-        return
+        sys.exit(1)
     
     print(f"Data loaded: {len(df)} periods")
     print(f"Date range: {df.index[0].date()} to {df.index[-1].date()}")

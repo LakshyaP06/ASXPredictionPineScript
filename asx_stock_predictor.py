@@ -26,6 +26,16 @@ class ASXStockPredictor:
     - Support and Resistance levels
     """
     
+    # Configuration constants
+    CONSOLIDATION_THRESHOLD = 0.05  # 5% range for consolidation detection
+    PREDICTION_WEIGHTS = {
+        'linear_regression': 0.25,
+        'ema_momentum': 0.25,
+        'mean_reversion': 0.20,
+        'rsi_based': 0.15,
+        'pattern_based': 0.15
+    }
+    
     def __init__(self, df: pd.DataFrame):
         """
         Initialize predictor with OHLCV data
@@ -203,7 +213,7 @@ class ASXStockPredictor:
         
         # Check if we're in consolidation (tight range)
         volatility = range_size / avg_price
-        is_consolidating = volatility < 0.05  # 5% range
+        is_consolidating = volatility < self.CONSOLIDATION_THRESHOLD
         
         # Detect breakout
         breakout_up = current_price > high_range and is_consolidating
@@ -874,9 +884,11 @@ class ASXStockPredictor:
         
         # === Combine Predictions (Weighted Average) ===
         def combine_predictions(p1, p2, p3, p4, p5):
-            weights = [0.25, 0.25, 0.20, 0.15, 0.15]  # LR, EMA, MR, RSI, Pattern
-            return (p1 * weights[0] + p2 * weights[1] + p3 * weights[2] + 
-                   p4 * weights[3] + p5 * weights[4])
+            return (p1 * self.PREDICTION_WEIGHTS['linear_regression'] + 
+                   p2 * self.PREDICTION_WEIGHTS['ema_momentum'] + 
+                   p3 * self.PREDICTION_WEIGHTS['mean_reversion'] + 
+                   p4 * self.PREDICTION_WEIGHTS['rsi_based'] + 
+                   p5 * self.PREDICTION_WEIGHTS['pattern_based'])
         
         tomorrow_pred = combine_predictions(lr_tomorrow, ema_tomorrow, mr_tomorrow, 
                                            rsi_tomorrow, pattern_tomorrow)
