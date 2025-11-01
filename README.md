@@ -1,15 +1,24 @@
-# ASX Stock Prediction - Advanced Technical Analysis
+# ASX Stock Prediction - Advanced Technical Analysis with Machine Learning
 
-This repository contains two implementations of advanced stock prediction for ASX (Australian Securities Exchange) stocks:
+This repository contains advanced stock prediction implementations for ASX (Australian Securities Exchange) stocks:
 
 1. **PineScript Version** (`predictionscript.pine`) - For TradingView
-2. **Python Version** (`asx_stock_predictor.py`) - For Jupyter Notebook and standalone use
+2. **Python Version** (`asx_stock_predictor.py`) - Traditional technical analysis
+3. **ML-Enhanced Version** (`ml_asx_predictor.py`) - 🆕 **Machine Learning with TensorFlow**
 
-## 🐍 Python Implementation (NEW!)
+## 🤖 ML-Enhanced Implementation (NEW!)
 
-A comprehensive Python-based stock predictor that works in Jupyter Notebook with advanced technical analysis methods:
+A state-of-the-art ML prediction system combining **Deep Learning (LSTM)** with traditional technical analysis:
 
-### **Technical Analysis Methods:**
+### **Machine Learning Features:**
+- 🧠 **LSTM Neural Networks** - Deep learning for sequence prediction
+- ✅ **K-Fold Cross-Validation** - Robust model evaluation with 5-fold CV
+- 📊 **Feature Engineering** - 40+ features from technical indicators
+- 🎯 **Hybrid Predictions** - Ensemble of ML (60%) + Technical Analysis (40%)
+- 📈 **Backtesting Framework** - Validate against historical data
+- 🔬 **Performance Metrics** - MAE, RMSE, MAPE, R² scores
+
+### **Technical Analysis Methods (Integrated as Features):**
 - ✅ **Fibonacci Retracements and Extensions** - Key support/resistance levels
 - ✅ **Breakout Pattern Detection** - Consolidation and breakout identification
 - ✅ **Reversal Pattern Detection** - Double tops/bottoms, head & shoulders, wedges
@@ -21,15 +30,72 @@ A comprehensive Python-based stock predictor that works in Jupyter Notebook with
 - ✅ **Harmonic Pattern Detection** - Gartley, Butterfly, Bat, Crab
 - ✅ **Support and Resistance Levels** - Dynamic S/R identification
 
-### **Price Predictions:**
-The system provides accurate price estimates for:
-- 📈 **Tomorrow** - Next trading day forecast
+### **Multi-Horizon Predictions:**
+The ML system provides predictions for:
+- 📈 **Tomorrow** - Next trading day forecast with ML confidence
 - 📊 **One Week** - 5 trading days ahead
 - 📅 **One Month** - 22 trading days ahead
 
-Each prediction includes confidence scores and price ranges!
+Each prediction includes:
+- ML prediction, TA prediction, and hybrid (combined) prediction
+- Confidence scores and price ranges
+- Model performance metrics (MAPE, MAE, RMSE)
 
-### **Quick Start (Python):**
+### **Quick Start (ML Version):**
+
+```bash
+# Install dependencies (includes TensorFlow)
+pip install -r requirements.txt
+
+# Run ML test on specified stocks
+python test_ml_predictor.py
+
+# Or test single stock quickly
+python test_ml_predictor.py --single
+
+# Or use Jupyter Notebook
+jupyter notebook ML_ASX_Predictor.ipynb
+```
+
+### **Usage Example (ML):**
+
+```python
+import yfinance as yf
+from ml_asx_predictor import MLASXPredictor
+
+# Download stock data (need 2 years for ML training)
+df = yf.download("FLT.AX", period="2y")
+
+# Create ML-enhanced predictor
+predictor = MLASXPredictor(df, enable_ml=True)
+
+# Train ML models with K-fold cross-validation
+training_results = predictor.train_ml_models(epochs=30)
+
+# Get hybrid predictions (ML + TA)
+predictions = predictor.predict_prices_hybrid()
+
+print(f"Tomorrow: ${predictions['tomorrow']['prediction']:.2f}")
+print(f"  ML: ${predictions['tomorrow']['ml_prediction']:.2f}")
+print(f"  TA: ${predictions['tomorrow']['ta_prediction']:.2f}")
+print(f"  Confidence: {predictions['tomorrow']['confidence']:.0f}%")
+
+# Backtest against historical data
+backtest = predictor.backtest_predictions(test_days=20)
+print(f"MAPE: {backtest['metrics']['tomorrow']['mape']:.2f}%")
+```
+
+### **Tested Stocks:**
+The system has been validated on these ASX stocks:
+- AEE.AX, BTL.AX, BTR.AX, CXL.AX, DKM.AX, FLT.AX
+- GNG.AX, HGEN.AX, HLO.AX, IMM.AX, IVV.AX, NDQ.AX
+- NGI.AX, RAD.AX, SNT.AX, URNM.AX
+
+Plus trained on 20+ major ASX stocks for data diversity.
+
+---
+
+## 🐍 Traditional Python Implementation
 
 ```bash
 # Install dependencies
@@ -112,11 +178,20 @@ See [USAGE_GUIDE.md](USAGE_GUIDE.md) for complete documentation.
 
 ## 📋 Files in This Repository
 
-- `asx_stock_predictor.py` - Main Python predictor class with all technical analysis methods
-- `ASX_Stock_Predictor.ipynb` - Interactive Jupyter notebook with examples and visualizations
-- `example_usage.py` - Simple Python script demonstrating basic usage
-- `requirements.txt` - Python package dependencies
+### Machine Learning Files
+- `ml_asx_predictor.py` - ML-enhanced predictor with TensorFlow LSTM networks
+- `ML_ASX_Predictor.ipynb` - Interactive ML notebook with training and backtesting
+- `test_ml_predictor.py` - Testing script for specified ASX stocks with K-fold validation
+
+### Traditional Technical Analysis Files
+- `asx_stock_predictor.py` - Base predictor class with all technical analysis methods
+- `ASX_Stock_Predictor.ipynb` - Interactive Jupyter notebook with TA examples and visualizations
+- `example_usage.py` - Simple Python script demonstrating basic TA usage
+
+### Documentation and Configuration
+- `requirements.txt` - Python package dependencies (includes TensorFlow and scikit-learn)
 - `USAGE_GUIDE.md` - Complete documentation and API reference
+- `predictionscript.pine` - Original TradingView PineScript indicator
 - `predictionscript.pine` - Original TradingView PineScript indicator
 
 ## 🎓 Supported ASX Stocks
