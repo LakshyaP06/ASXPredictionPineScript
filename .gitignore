@@ -41,6 +41,12 @@ env/
 .DS_Store
 Thumbs.db
 
+# ML Test Results
+ml_test_results_*.txt
+*.h5
+*.pkl
+saved_models/
+
 # Reports and outputs
 *.txt
 !requirements.txt
